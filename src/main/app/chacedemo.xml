@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <ee:object-store-caching-strategy name="Caching_Strategy" doc:name="Caching Strategy">
+        <managed-store storeName="demoCache" persistent="true" maxEntries="10000" entryTTL="60000000" expirationInterval="600000"/>
+    </ee:object-store-caching-strategy>
+    <flow name="chacedemoFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/cacheDemo" doc:name="HTTP"/>
+        <ee:cache cachingStrategy-ref="Caching_Strategy" filterExpression="#[Boolean.parseBoolean(message.inboundProperties.'http.query.params'.fromCache)]" doc:name="Cache">
+            <logger message="#[Long.parseLong(message.inboundProperties.'http.query.params'.seed)]" level="INFO" doc:name="Logger"/>
+            <enricher doc:name="Message Enricher">
+                <scripting:component doc:name="Groovy">
+                    <scripting:script engine="Groovy"><![CDATA[//double randomGenerator(long seed) {
+//    Random generator = new Random(seed);
+//    double num = generator.nextDouble() * (0.5);
+//    return num;
+//}
+
+return Long.parseLong(message.getInboundProperty('http.query.params')?.seed) //randomGenerator(Long.parseLong(message.inboundProperties.'http.query.params'.seed))]]></scripting:script>
+                </scripting:component>
+                <enrich source="" target="#[flowVars['RandomNum']]"/>
+            </enricher>
+            <set-payload value="#[&quot;Random Number Payload:&quot; + flowVars.RandomNum ]" doc:name="Set Payload"/>
+            <logger message="Payload Type #[payload.getClass()]" level="INFO" doc:name="Logger"/>
+        </ee:cache>
+    </flow>
+</mule>
